@@ -52,6 +52,8 @@ class statistics:
 		self.idle = 0
 		self.system = 0
 		self.user = 0
+		self.larx_user = 0
+		self.larx_system = 0
 		self.opal = 0
 		self.context_switches = 0
 		self.exceptions = collections.defaultdict(int)
@@ -59,6 +61,7 @@ class statistics:
 
 		self.__in_system_call_entry = False
 		self.__system_call_branch = False
+                self.larx_re = re.compile('l.arx')
 
 
 	def is_exception_entry(self, addr):
@@ -78,10 +81,15 @@ class statistics:
 
 		if (addr >> 60) == 0xc:
 			self.system = self.system + 1
+                        if self.larx_re.match(insn):
+			        self.larx_system += 1
 		elif (addr & 0xFFFFFFFFFF000000) == 0x0000000030000000:
 			self.opal = self.opal + 1
 		else:
 			self.user = self.user + 1
+                        if self.larx_re.match(insn):
+			        self.larx_user += 1
+
 
 		if "__switch_to" in function_name and "mflr" in insn:
 			self.context_switches = self.context_switches + 1
@@ -113,8 +121,10 @@ class statistics:
 
 		print "%-30s%10d" % ("total instructions", total)
 		print "%-30s%13.2f%%" % ("user", 100.0 * self.user / total)
+                print "%-30s%13.2f%%" % ("       larx", 100.0 * self.larx_user / self.user)
 		print "%-30s%13.2f%%" % ("opal", 100.0 * self.opal / total)
 		print "%-30s%13.2f%%" % ("system", 100.0 * (self.system - self.idle) / total)
+                print "%-30s%13.2f%%" % ("       larx", 100.0 * self.larx_system / self.system)
 		print "%-30s%13.2f%%" % ("idle", 100.0 * self.idle / total)
 
 		print "\n%-30s%10d" % ('Context switches', self.context_switches)
